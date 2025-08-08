@@ -23,6 +23,7 @@ let pendingPromotion = null; // { from, to }
 let lastMoveFrom = null;
 let lastMoveTo = null;
 let aiLoop = null; // reserved for training/ai-vs-ai flows (not used in human vs AI)
+let moveInFlight = false; // prevent duplicate move submissions
 
 function algebraicToCoords(square) {
   const file = square.charCodeAt(0) - 'a'.charCodeAt(0); // 0..7
@@ -68,7 +69,7 @@ async function fetchState() {
   }
   renderStatus();
   renderBoard();
-  // In Human vs AI, no autonomous loop; server triggers AI async and we poll till it finishes
+  // In Human vs AI, no autonomous loop; server replies synchronously for AI turns
 }
 
 function renderStatus() {
@@ -97,7 +98,8 @@ function isOwnPiece(square) {
 
 async function onSquareClick(square) {
   if (pendingPromotion) return; // Wait for promotion selection
-  if (!gameState || gameState.turn !== gameState.human_color) return; // Block during AI turn
+  if (!gameState || gameState.turn !== gameState.human_color) return; // Only allow moves on your turn
+  if (moveInFlight) return; // Block input while move is processing
 
   if (selectedSquare === null) {
     if (isOwnPiece(square)) {
@@ -115,8 +117,17 @@ async function onSquareClick(square) {
     return;
   }
 
-  // Attempt move selectedSquare -> square
-  await tryMove(selectedSquare, square);
+  // Only allow moves to legal targets; allow reselecting another own piece
+  if (legalTargets.includes(square)) {
+    await tryMove(selectedSquare, square);
+  } else if (isOwnPiece(square)) {
+    selectedSquare = square;
+    legalTargets = await getLegalTargets(square);
+    renderBoard();
+  } else {
+    // Ignore invalid target; keep current selection
+    return;
+  }
 }
 
 async function getLegalTargets(fromSquare) {
@@ -183,11 +194,22 @@ function renderBoard() {
 }
 
 async function tryMove(fromSquare, toSquare, promotion = null) {
-  const res = await fetch('/api/move', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from_square: fromSquare, to_square: toSquare, promotion }),
-  });
+  moveInFlight = true;
+  let res;
+  try {
+    res = await fetch('/api/move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from_square: fromSquare, to_square: toSquare, promotion }),
+    });
+  } catch (e) {
+    // Network or server error; reset selection and refresh
+    selectedSquare = null;
+    legalTargets = [];
+    await fetchState();
+    moveInFlight = false;
+    return;
+  }
 
   if (res.ok) {
     selectedSquare = null;
@@ -197,6 +219,7 @@ async function tryMove(fromSquare, toSquare, promotion = null) {
     renderBoard();
     // As before, refresh once shortly after to ensure we reflect any server-side AI reply
     setTimeout(fetchState, 50);
+    moveInFlight = false;
     return;
   }
 
@@ -214,7 +237,8 @@ async function tryMove(fromSquare, toSquare, promotion = null) {
   // Otherwise, invalid move
   selectedSquare = null;
   legalTargets = [];
-  renderBoard();
+  await fetchState();
+  moveInFlight = false;
 }
 
 function openPromotionModal() {

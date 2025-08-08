@@ -762,8 +762,9 @@ def set_config(req: ConfigRequest) -> Dict:
 
 @app.post("/api/move")
 def post_move(req: MoveRequest) -> Dict:
-    if not is_human_turn():
-        raise HTTPException(status_code=400, detail="Not your turn")
+    # Enforce turn strictly by color alignment: the piece on the source square must match side to move
+    if board.is_game_over():
+        raise HTTPException(status_code=400, detail="Game is over")
 
     src_name = req.from_square.lower()
     dst_name = req.to_square.lower()
@@ -775,12 +776,12 @@ def post_move(req: MoveRequest) -> Dict:
     src = chess.SQUARE_NAMES.index(src_name)
     dst = chess.SQUARE_NAMES.index(dst_name)
 
-    # Ensure moving a human piece
+    # Ensure moving side-to-move piece
     piece = board.piece_at(src)
     if piece is None:
         raise HTTPException(status_code=400, detail="No piece on source square")
-    if (piece.color and human_color != "white") or ((not piece.color) and human_color != "black"):
-        raise HTTPException(status_code=400, detail="Cannot move AI's piece")
+    if piece.color != board.turn:
+        raise HTTPException(status_code=400, detail="Not your turn")
 
     # Gather candidate legal moves for the from->to pair
     candidates = [
