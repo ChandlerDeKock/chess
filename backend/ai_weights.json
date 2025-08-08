@@ -1,0 +1,16 @@
+{
+  "material_pawn": 100.0,
+  "material_knight": 320.0,
+  "material_bishop": 330.0,
+  "material_rook": 500.0,
+  "material_queen": 900.0,
+  "pst_scalar": 1.0,
+  "mobility": 2.0,
+  "bishop_pair": 35.0,
+  "doubled_pawn": -18.0,
+  "isolated_pawn": -12.0,
+  "passed_pawn": 25.0,
+  "rook_open_file": 20.0,
+  "rook_semi_open_file": 10.0,
+  "king_pawn_shield": 8.0
+}

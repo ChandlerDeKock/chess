@@ -22,6 +22,7 @@ let flip = false;
 let pendingPromotion = null; // { from, to }
 let lastMoveFrom = null;
 let lastMoveTo = null;
+let aiLoop = null; // reserved for training/ai-vs-ai flows (not used in human vs AI)
 
 function algebraicToCoords(square) {
   const file = square.charCodeAt(0) - 'a'.charCodeAt(0); // 0..7
@@ -67,6 +68,7 @@ async function fetchState() {
   }
   renderStatus();
   renderBoard();
+  // In Human vs AI, no autonomous loop; server triggers AI async and we poll till it finishes
 }
 
 function renderStatus() {
@@ -77,9 +79,9 @@ function renderStatus() {
   } else if (gameState.is_stalemate) {
     statusEl.textContent = 'Stalemate.';
   } else if (gameState.is_check) {
-    statusEl.textContent = `${gameState.turn} to move — Check!${yourTurn ? '' : ' (AI thinking...)'}`;
+    statusEl.textContent = `${gameState.turn} to move — Check!${yourTurn ? '' : (gameState.ai_thinking ? ' (AI thinking...)' : '')}`;
   } else {
-    statusEl.textContent = `${gameState.turn} to move.${yourTurn ? '' : ' (AI thinking...)'}`;
+    statusEl.textContent = `${gameState.turn} to move.${yourTurn ? '' : (gameState.ai_thinking ? ' (AI thinking...)' : '')}`;
   }
 }
 
@@ -193,7 +195,7 @@ async function tryMove(fromSquare, toSquare, promotion = null) {
     gameState = await res.json();
     renderStatus();
     renderBoard();
-    // If AI should move next, poll state once more to reflect AI move done server-side
+    // As before, refresh once shortly after to ensure we reflect any server-side AI reply
     setTimeout(fetchState, 50);
     return;
   }
@@ -250,6 +252,8 @@ undoBtn.addEventListener('click', async () => {
   await fetchState();
 });
 
+// No mode selector in Human vs AI mode
+
 flipBoardChk.addEventListener('change', () => {
   flip = !!flipBoardChk.checked;
   renderBoard();
@@ -292,3 +296,5 @@ sizeSlider.addEventListener('input', (e) => {
 updateBoardSize(parseInt(sizeSlider.value, 10));
 
 fetchState();
+
+// AI vs AI logic moved out of app.js (used only by training panel)

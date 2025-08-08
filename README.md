@@ -28,6 +28,10 @@ uvicorn backend.main:app --reload
 - Legal move highlighting.
 - Promotion support.
 - Check / checkmate / stalemate indicators.
+- Last move highlighting (from square, to square, and moved piece)
+- Stronger AI (iterative deepening + TT + quiescence + improved eval)
+- Human vs AI flow: human moves, server replies asynchronously; UI polls until AI completes
+- AI vs AI flow: available via `/api/ai-step?force=true` (used by training)
 
 ## API (basic)
 
@@ -36,6 +40,35 @@ uvicorn backend.main:app --reload
 - `GET /api/legal-moves?from=e2` → list of targets for the square
 - `POST /api/new-game` → reset to initial position
 - `POST /api/undo` → undo last move
+
+### AI Engine
+
+The AI uses iterative deepening alpha-beta with:
+- Transposition table
+- Quiescence search (captures at leaf nodes)
+- Improved evaluation: PSTs, bishop pair, pawn structure (doubled/isolated/passed), rook open/semi-open files, king pawn shield, and mobility
+- Move ordering: TT/PV move, MVV-LVA captures, killer moves, history heuristic
+- Time-based search per difficulty
+
+Evaluation weights are kept in `backend/ai_weights.json`, loaded at startup.
+
+### Optional: Self-play Training
+
+Background training can refine weights via self-play and saves to `backend/ai_weights.json`.
+
+Endpoints (for training/AI-vs-AI):
+- `POST /api/train-start` (params: `iterations`, `games_per_iter`, `sigma`)
+- `GET /api/train-status`
+- `POST /api/train-stop`
+- `POST /api/ai-step?force=true` — advance the AI one move regardless of turn
+
+Example:
+
+```bash
+curl -X POST 'http://localhost:8000/api/train-start' -H 'Content-Type: application/json' -d '{"iterations":30, "games_per_iter":6, "sigma":4.0}'
+curl 'http://localhost:8000/api/train-status'
+curl -X POST 'http://localhost:8000/api/train-stop'
+```
 
 ## Notes
 
