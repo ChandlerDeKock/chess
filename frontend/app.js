@@ -3,10 +3,13 @@ const statusEl = document.getElementById('status');
 const newGameBtn = document.getElementById('newGameBtn');
 const undoBtn = document.getElementById('undoBtn');
 const flipBoardChk = document.getElementById('flipBoard');
+const colorSelect = document.getElementById('colorSelect');
+const difficultySelect = document.getElementById('difficultySelect');
 const sizeSlider = document.getElementById('sizeSlider');
 const sizeValue = document.getElementById('sizeValue');
 const promotionModal = document.getElementById('promotionModal');
 
+// Use local SVGs for standard-looking pieces
 const PIECE_IMAGE = {
   'P': '/pieces/wP.svg', 'N': '/pieces/wN.svg', 'B': '/pieces/wB.svg', 'R': '/pieces/wR.svg', 'Q': '/pieces/wQ.svg', 'K': '/pieces/wK.svg',
   'p': '/pieces/bP.svg', 'n': '/pieces/bN.svg', 'b': '/pieces/bB.svg', 'r': '/pieces/bR.svg', 'q': '/pieces/bQ.svg', 'k': '/pieces/bK.svg',
@@ -17,6 +20,8 @@ let selectedSquare = null;
 let legalTargets = [];
 let flip = false;
 let pendingPromotion = null; // { from, to }
+let lastMoveFrom = null;
+let lastMoveTo = null;
 
 function algebraicToCoords(square) {
   const file = square.charCodeAt(0) - 'a'.charCodeAt(0); // 0..7
@@ -41,20 +46,40 @@ function squareColor(file, rank) {
 async function fetchState() {
   const res = await fetch('/api/state');
   gameState = await res.json();
+  // Sync selectors if changed elsewhere
+  if (colorSelect && gameState.human_color && colorSelect.value !== gameState.human_color) {
+    colorSelect.value = gameState.human_color;
+  }
+  if (difficultySelect && gameState.ai_difficulty && difficultySelect.value !== gameState.ai_difficulty) {
+    difficultySelect.value = gameState.ai_difficulty;
+  }
+  // Update last move markers from history if available
+  if (gameState && Array.isArray(gameState.history) && gameState.history.length > 0) {
+    const lastUci = gameState.history[gameState.history.length - 1];
+    // UCI: e2e4 or e7e8q (promotion suffix ignored for highlights)
+    if (typeof lastUci === 'string' && lastUci.length >= 4) {
+      lastMoveFrom = lastUci.slice(0, 2);
+      lastMoveTo = lastUci.slice(2, 4);
+    }
+  } else {
+    lastMoveFrom = null;
+    lastMoveTo = null;
+  }
   renderStatus();
   renderBoard();
 }
 
 function renderStatus() {
   if (!gameState) return;
+  const yourTurn = (gameState.turn === gameState.human_color);
   if (gameState.is_checkmate) {
     statusEl.textContent = `Checkmate. Winner: ${gameState.turn === 'white' ? 'black' : 'white'}`;
   } else if (gameState.is_stalemate) {
     statusEl.textContent = 'Stalemate.';
   } else if (gameState.is_check) {
-    statusEl.textContent = `${gameState.turn} to move — Check!`;
+    statusEl.textContent = `${gameState.turn} to move — Check!${yourTurn ? '' : ' (AI thinking...)'}`;
   } else {
-    statusEl.textContent = `${gameState.turn} to move.`;
+    statusEl.textContent = `${gameState.turn} to move.${yourTurn ? '' : ' (AI thinking...)'}`;
   }
 }
 
@@ -65,11 +90,12 @@ function pieceAt(square) {
 
 function isOwnPiece(square) {
   const p = pieceAt(square);
-  return p && p.color === gameState.turn;
+  return p && p.color === gameState.human_color;
 }
 
 async function onSquareClick(square) {
   if (pendingPromotion) return; // Wait for promotion selection
+  if (!gameState || gameState.turn !== gameState.human_color) return; // Block during AI turn
 
   if (selectedSquare === null) {
     if (isOwnPiece(square)) {
@@ -118,7 +144,10 @@ function renderBoard() {
       const sq = `${f}${r}`;
       const { file, rank } = algebraicToCoords(sq);
       const div = document.createElement('div');
-      div.className = `square ${squareColor(file, r-1)}${selectedSquare === sq ? ' selected' : ''}`;
+      const isSelected = selectedSquare === sq;
+      const isLastFrom = lastMoveFrom === sq;
+      const isLastTo = lastMoveTo === sq;
+      div.className = `square ${squareColor(file, r-1)}${isSelected ? ' selected' : ''}${isLastFrom ? ' last-from' : ''}${isLastTo ? ' last-to' : ''}`;
       div.dataset.square = sq;
 
       const p = pieceAt(sq);
@@ -128,6 +157,9 @@ function renderBoard() {
         img.draggable = false;
         img.alt = p.symbol;
         img.src = PIECE_IMAGE[p.symbol];
+        if (lastMoveTo === sq) {
+          img.classList.add('moved');
+        }
         div.appendChild(img);
       }
 
@@ -161,6 +193,8 @@ async function tryMove(fromSquare, toSquare, promotion = null) {
     gameState = await res.json();
     renderStatus();
     renderBoard();
+    // If AI should move next, poll state once more to reflect AI move done server-side
+    setTimeout(fetchState, 50);
     return;
   }
 
@@ -219,6 +253,29 @@ undoBtn.addEventListener('click', async () => {
 flipBoardChk.addEventListener('change', () => {
   flip = !!flipBoardChk.checked;
   renderBoard();
+});
+
+colorSelect.addEventListener('change', async () => {
+  const val = colorSelect.value;
+  await fetch('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ human_color: val }),
+  });
+  // Start a new game automatically when color changes
+  await fetch('/api/new-game', { method: 'POST' });
+  await fetchState();
+});
+
+difficultySelect.addEventListener('change', async () => {
+  const val = difficultySelect.value;
+  await fetch('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ difficulty: val }),
+  });
+  // Keep current game; difficulty applies on AI's next move
+  await fetchState();
 });
 
 function updateBoardSize(px) {

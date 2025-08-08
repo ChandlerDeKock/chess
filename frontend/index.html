@@ -16,6 +16,21 @@
         <label class="orientation">
           <input type="checkbox" id="flipBoard" /> Flip
         </label>
+        <label class="orientation">
+          Color
+          <select id="colorSelect">
+            <option value="white">White</option>
+            <option value="black">Black</option>
+          </select>
+        </label>
+        <label class="orientation">
+          Difficulty
+          <select id="difficultySelect">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </label>
         <div class="size-control">
           <span>Size</span>
           <input id="sizeSlider" type="range" min="360" max="960" step="20" value="720" />
