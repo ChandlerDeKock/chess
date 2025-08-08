@@ -1,0 +1,36 @@
+* { box-sizing: border-box; }
+:root { --board-size: min(90vmin, 720px); }
+body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji"; background: #0f172a; color: #e2e8f0; }
+
+.app { max-width: 980px; margin: 24px auto; padding: 0 16px; }
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
+.header h1 { margin: 0; font-size: 22px; }
+.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+button { background: #334155; color: #e2e8f0; border: 1px solid #475569; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+button:hover { background: #475569; }
+.orientation { display: flex; gap: 6px; align-items: center; font-size: 14px; }
+
+.size-control { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px; border: 1px solid #334155; border-radius: 8px; background: #0b1220; }
+.size-control input[type="range"] { width: 180px; }
+.size-control .value { min-width: 52px; text-align: right; color: #cbd5e1; }
+
+.status { margin: 12px 0 16px; min-height: 22px; color: #cbd5e1; }
+
+.board { width: var(--board-size); height: var(--board-size); display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); border: 8px solid #1e293b; border-radius: 8px; overflow: hidden; background: #111827; }
+.square { position: relative; display: flex; align-items: center; justify-content: center; user-select: none; }
+.square.light { background: #e5e7eb; color: #111827; }
+.square.dark { background: #6b7280; color: #111827; }
+.square.selected { outline: 3px solid #f59e0b; z-index: 1; }
+.square .dot { width: 14%; height: 14%; background: rgba(16,185,129,0.9); border-radius: 50%; position: absolute; }
+.square .capture { border: 4px solid rgba(239,68,68,0.9); width: 80%; height: 80%; border-radius: 50%; position: absolute; box-sizing: border-box; }
+.square img.piece { width: 82%; height: 82%; object-fit: contain; pointer-events: none; }
+
+.modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); }
+.modal.hidden { display: none; }
+.modal-content { background: #0b1220; border: 1px solid #334155; border-radius: 8px; padding: 16px; width: 300px; }
+.promo-options { display: flex; gap: 8px; justify-content: space-between; }
+.promo-options button { flex: 1; }
+
+@media (max-width: 640px) {
+  .size-control input[type="range"] { width: 130px; }
+}

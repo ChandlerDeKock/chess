@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chess</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <h1>Chess</h1>
+      <div class="controls">
+        <button id="newGameBtn">New Game</button>
+        <button id="undoBtn">Undo</button>
+        <label class="orientation">
+          <input type="checkbox" id="flipBoard" /> Flip
+        </label>
+        <div class="size-control">
+          <span>Size</span>
+          <input id="sizeSlider" type="range" min="360" max="960" step="20" value="720" />
+          <span class="value" id="sizeValue">720px</span>
+        </div>
+      </div>
+    </div>
+    <div class="status" id="status">&nbsp;</div>
+    <div id="board" class="board"></div>
+  </div>
+
+  <div id="promotionModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Choose promotion</h3>
+      <div class="promo-options">
+        <button data-piece="q">Queen</button>
+        <button data-piece="r">Rook</button>
+        <button data-piece="b">Bishop</button>
+        <button data-piece="n">Knight</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
